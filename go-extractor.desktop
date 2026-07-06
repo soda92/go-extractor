@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Service
+MimeType=application/zip;application/x-tar;application/x-7z-compressed;application/x-rar;application/x-bzip2;application/x-gzip;application/x-lzma;application/x-xz;application/x-zstd;
+Actions=ExtractToCustom;
+X-KDE-Submenu=Extract
+
+[Desktop Action ExtractToCustom]
+Name=Extract to Custom Subfolder (Go)...
+Icon=archive-extract
+Exec=go-extractor %F

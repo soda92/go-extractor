@@ -1,0 +1,18 @@
+# Compiled Go binaries
+/go-extractor
+/go-extractor-test
+/go-extractor-debug
+/go-extractor-*-x86_64.pkg.tar.zst
+
+# Go build dependencies/tooling
+/gopath/
+/gocache/
+
+# Arch Linux package build directories
+/pkg/
+/src/
+
+# Pacman packages produced by makepkg
+*.pkg.tar.zst
+*.pkg.tar.xz
+*.pkg.tar.gz
