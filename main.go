@@ -36,8 +36,8 @@ func main() {
 	// Default subfolder name is the archive name without suffix.
 	ext := filepath.Ext(archiveName)
 	defaultSubfolder := strings.TrimSuffix(archiveName, ext)
-	if strings.HasSuffix(defaultSubfolder, ".tar") {
-		defaultSubfolder = strings.TrimSuffix(defaultSubfolder, ".tar")
+	if before, ok :=strings.CutSuffix(defaultSubfolder, ".tar"); ok  {
+		defaultSubfolder = before
 	}
 
 	destEntry := widget.NewEntry()
@@ -55,6 +55,9 @@ func main() {
 	})
 	extractToSubfolder.SetChecked(true)
 
+	openInDolphinCheck := widget.NewCheck("Open in Dolphin", nil)
+	openInDolphinCheck.SetChecked(true)
+
 	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{Text: "Archive:", Widget: widget.NewLabel(archiveName)},
@@ -65,13 +68,15 @@ func main() {
 
 	statusLabel := widget.NewLabel("")
 
-	extractBtn := widget.NewButton("Extract", func() {
+	var startExtraction func()
+	startExtraction = func() {
 		statusLabel.SetText("Extracting...")
 		myWindow.Content().Refresh()
 
 		dest := destEntry.Text
 		subfolder := subfolderEntry.Text
 		useSubfolder := extractToSubfolder.Checked
+		openInDolphin := openInDolphinCheck.Checked
 
 		go func() {
 			err := performExtraction(archivePath, dest, subfolder, useSubfolder)
@@ -81,13 +86,32 @@ func main() {
 					statusLabel.SetText("Failed: " + err.Error())
 				})
 			} else {
+				if openInDolphin {
+					var targetFolder string
+					if useSubfolder {
+						targetFolder = filepath.Join(dest, subfolder)
+					} else {
+						targetFolder = dest
+					}
+					cmd := exec.Command("dolphin", targetFolder)
+					_ = cmd.Start()
+				}
 				fyne.Do(func() {
 					dialog.ShowInformation("Success", "Archive successfully extracted!", myWindow)
 					myApp.Quit()
 				})
 			}
 		}()
-	})
+	}
+
+	destEntry.OnSubmitted = func(string) {
+		startExtraction()
+	}
+	subfolderEntry.OnSubmitted = func(string) {
+		startExtraction()
+	}
+
+	extractBtn := widget.NewButton("Extract", startExtraction)
 
 	cancelBtn := widget.NewButton("Cancel", func() {
 		myApp.Quit()
@@ -97,6 +121,7 @@ func main() {
 	content := container.NewVBox(
 		form,
 		extractToSubfolder,
+		openInDolphinCheck,
 		statusLabel,
 		buttons,
 	)

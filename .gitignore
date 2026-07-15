@@ -7,10 +7,12 @@
 # Go build dependencies/tooling
 /gopath/
 /gocache/
+/vendor/
 
 # Arch Linux package build directories
 /pkg/
 /src/
+/repo/
 
 # Pacman packages produced by makepkg
 *.pkg.tar.zst

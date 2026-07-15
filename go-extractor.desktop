@@ -5,6 +5,6 @@ Actions=ExtractToCustom;
 X-KDE-Submenu=Extract
 
 [Desktop Action ExtractToCustom]
-Name=Extract to Custom Subfolder (Go)...
+Name=Extract to Folder...
 Icon=archive-extract
 Exec=go-extractor %F
