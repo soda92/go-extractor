@@ -1,13 +1,15 @@
 # Maintainer: Maple <wjxa20152015@gmail.com>
 pkgname=go-extractor
 pkgver=0.2.0
-pkgrel=1
+pkgrel=2
 pkgdesc="A Fyne-based GUI tool for extracting archives to a custom subfolder, integrated with Dolphin."
 arch=('x86_64')
-url="https://github.com/wjxa2015/go-extractor"
+url="https://github.com/soda92/go-extractor"
 license=('unknown')
 depends=('7zip' 'glibc' 'libgl' 'libx11' 'libxrandr' 'libxxf86vm' 'libxi' 'libxcursor' 'libxinerama')
 makedepends=('go')
+conflicts=('ark')
+options=(!debug)
 source=('main.go'
         'go.mod'
         'go.sum'
