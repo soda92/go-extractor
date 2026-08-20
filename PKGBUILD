@@ -1,6 +1,6 @@
 # Maintainer: Maple <wjxa20152015@gmail.com>
 pkgname=go-extractor
-pkgver=0.3.0
+pkgver=0.3.1
 pkgrel=1
 pkgdesc="A Fyne-based GUI tool for extracting archives to a custom subfolder, integrated with Dolphin."
 arch=('x86_64')
