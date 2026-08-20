@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,10 +15,12 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+var ErrPasswordRequired = errors.New("password required or incorrect password")
+
 func main() {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("Go Extractor")
-	myWindow.Resize(fyne.NewSize(500, 250))
+	myWindow.Resize(fyne.NewSize(500, 290))
 
 	if len(os.Args) < 2 {
 		showErrorAndExit(myApp, myWindow, "No archive file specified.\nUsage: go-extractor <archive-path>")
@@ -36,7 +39,7 @@ func main() {
 	// Default subfolder name is the archive name without suffix.
 	ext := filepath.Ext(archiveName)
 	defaultSubfolder := strings.TrimSuffix(archiveName, ext)
-	if before, ok :=strings.CutSuffix(defaultSubfolder, ".tar"); ok  {
+	if before, ok := strings.CutSuffix(defaultSubfolder, ".tar"); ok {
 		defaultSubfolder = before
 	}
 
@@ -45,6 +48,9 @@ func main() {
 
 	subfolderEntry := widget.NewEntry()
 	subfolderEntry.SetText(defaultSubfolder)
+
+	passwordEntry := widget.NewPasswordEntry()
+	passwordEntry.SetPlaceHolder("Optional")
 
 	extractToSubfolder := widget.NewCheck("Extract to subfolder", func(checked bool) {
 		if checked {
@@ -63,6 +69,7 @@ func main() {
 			{Text: "Archive:", Widget: widget.NewLabel(archiveName)},
 			{Text: "Destination:", Widget: destEntry},
 			{Text: "Subfolder Name:", Widget: subfolderEntry},
+			{Text: "Password:", Widget: passwordEntry},
 		},
 	}
 
@@ -75,16 +82,27 @@ func main() {
 
 		dest := destEntry.Text
 		subfolder := subfolderEntry.Text
+		password := passwordEntry.Text
 		useSubfolder := extractToSubfolder.Checked
 		openInDolphin := openInDolphinCheck.Checked
 
 		go func() {
-			err := performExtraction(archivePath, dest, subfolder, useSubfolder)
+			err := performExtraction(archivePath, dest, subfolder, useSubfolder, password)
 			if err != nil {
-				fyne.Do(func() {
-					dialog.ShowError(err, myWindow)
-					statusLabel.SetText("Failed: " + err.Error())
-				})
+				if errors.Is(err, ErrPasswordRequired) {
+					fyne.Do(func() {
+						statusLabel.SetText("Password required...")
+						showPasswordPrompt(myWindow, "Encrypted Archive", func(pwd string) {
+							passwordEntry.SetText(pwd)
+							startExtraction()
+						})
+					})
+				} else {
+					fyne.Do(func() {
+						dialog.ShowError(err, myWindow)
+						statusLabel.SetText("Failed: " + err.Error())
+					})
+				}
 			} else {
 				if openInDolphin {
 					var targetFolder string
@@ -104,12 +122,9 @@ func main() {
 		}()
 	}
 
-	destEntry.OnSubmitted = func(string) {
-		startExtraction()
-	}
-	subfolderEntry.OnSubmitted = func(string) {
-		startExtraction()
-	}
+	destEntry.OnSubmitted = func(string) { startExtraction() }
+	subfolderEntry.OnSubmitted = func(string) { startExtraction() }
+	passwordEntry.OnSubmitted = func(string) { startExtraction() }
 
 	extractBtn := widget.NewButton("Extract", startExtraction)
 
@@ -128,6 +143,17 @@ func main() {
 
 	myWindow.SetContent(content)
 	myWindow.ShowAndRun()
+}
+
+func showPasswordPrompt(myWindow fyne.Window, title string, callback func(string)) {
+	pwdEntry := widget.NewPasswordEntry()
+	item := widget.NewFormItem("Password:", pwdEntry)
+	d := dialog.NewForm(title, "Extract", "Cancel", []*widget.FormItem{item}, func(ok bool) {
+		if ok {
+			callback(pwdEntry.Text)
+		}
+	}, myWindow)
+	d.Show()
 }
 
 func showErrorAndExit(myApp fyne.App, myWindow fyne.Window, msg string) {
@@ -153,7 +179,16 @@ func movePath(src, dst string) error {
 	return nil
 }
 
-func performExtraction(archivePath, destDir, subfolderName string, useSubfolder bool) error {
+func isPasswordError(output string) bool {
+	out := strings.ToLower(output)
+	return strings.Contains(out, "wrong password") ||
+		strings.Contains(out, "encrypted") ||
+		strings.Contains(out, "enter password") ||
+		strings.Contains(out, "headers error") ||
+		strings.Contains(out, "data error")
+}
+
+func performExtraction(archivePath, destDir, subfolderName string, useSubfolder bool, password string) error {
 	// Create a temporary directory for extraction
 	tempDir, err := os.MkdirTemp("", "go-extractor-*")
 	if err != nil {
@@ -162,9 +197,23 @@ func performExtraction(archivePath, destDir, subfolderName string, useSubfolder 
 	defer os.RemoveAll(tempDir)
 
 	// Run 7z to extract into the temp dir
-	cmd := exec.Command("7z", "x", "-o"+tempDir, archivePath)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("7z extraction failed: %w", err)
+	args := []string{"x", "-y", "-o" + tempDir}
+	if password != "" {
+		args = append(args, "-p"+password)
+	} else {
+		// -p- disables interactive password prompt on stdin so 7z fails cleanly if password is needed
+		args = append(args, "-p-")
+	}
+	args = append(args, archivePath)
+
+	cmd := exec.Command("7z", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		outStr := string(output)
+		if isPasswordError(outStr) {
+			return ErrPasswordRequired
+		}
+		return fmt.Errorf("7z extraction failed: %w\n%s", err, outStr)
 	}
 
 	// Read the temp directory contents

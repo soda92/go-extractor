@@ -1,7 +1,7 @@
 # Maintainer: Maple <wjxa20152015@gmail.com>
 pkgname=go-extractor
-pkgver=0.2.0
-pkgrel=2
+pkgver=0.3.2
+pkgrel=1
 pkgdesc="A Fyne-based GUI tool for extracting archives to a custom subfolder, integrated with Dolphin."
 arch=('x86_64')
 url="https://github.com/soda92/go-extractor"
@@ -13,8 +13,10 @@ options=(!debug)
 source=('main.go'
         'go.mod'
         'go.sum'
-        'go-extractor.desktop')
+        'go-extractor.desktop'
+        'go-extractor-servicemenu.desktop')
 sha256sums=('SKIP'
+            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP')
@@ -71,6 +73,9 @@ package() {
   # Install the binary
   install -Dm755 "$srcdir/build/go-extractor" "$pkgdir/usr/bin/go-extractor"
 
-  # Install the Dolphin service menu
-  install -Dm644 "$srcdir/go-extractor.desktop" "$pkgdir/usr/share/kio/servicemenus/go-extractor.desktop"
+  # Install the Application desktop file (enables default file association, app launcher, and Open With)
+  install -Dm644 "$srcdir/go-extractor.desktop" "$pkgdir/usr/share/applications/go-extractor.desktop"
+
+  # Install the Dolphin service menu (enables right-click action in Dolphin)
+  install -Dm644 "$srcdir/go-extractor-servicemenu.desktop" "$pkgdir/usr/share/kio/servicemenus/go-extractor.desktop"
 }
